@@ -21,8 +21,6 @@ bool txtCollectionComplete = false;
 //-----------------------------------------------------------------------------------------
 //Int to control the max characters allowed
 int maxCharacters = 60;
-//String to hold the approved message so it isn't overwritten during confirmation
-String processedMessage = "";
 //Bool to indicate that the message has been approved
 //set to false once transmission complete
 bool msgProcessingComplete = false;
@@ -47,16 +45,9 @@ int msTone = 1000;
 //Based on the 5 character word "PARIS" - 20wpm requires a 60 ms dit(1)
 int morseBinaryDelay = 40;
 
-
 //++++++++++++++++
 //Pin for sending out morse code tone
 int codeOutPin = 6;
-//Pin for actuating the PTT functionality
-int pttPin = 11;
-
-
-
-
 
 //-----------------------------------------------------------------------------------------
 void setup() {
@@ -67,21 +58,17 @@ void setup() {
   //Set pinMode for codeOutPin
   pinMode(codeOutPin, OUTPUT);
   digitalWrite(codeOutPin, LOW);
-  
-  //Set PinMode for pttPin
-  pinMode(pttPin, OUTPUT);
-  analogWrite(pttPin, 0);
 
+  //Reserve space for the txtCollection variable
+  //txtCollection.reserve(2);
+  
   //Introduce the program
-  Serial.println();
-  Serial.println("-----------------------------------------");
-  Serial.println("Morse Code Transcoder by Jonathan Ceis");
-  Serial.println("A project for Edmonds College - ENGR121");
-  Serial.println("-----------------------------------------");
-  Serial.println("Messages must be less than 60 characters long and contain a-z, A-Z, 0-9, and space characters");
-  Serial.println();
-  Serial.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-  Serial.println();
+  Serial.println(F("\n-----------------------------------------"));
+  Serial.println(F("Morse Code Transcoder by Jonathan Ceis"));
+  Serial.println(F("A project for Edmonds College - ENGR121"));
+  Serial.println(F("-----------------------------------------"));
+  Serial.println(F("Messages must be less than 60 characters long and contain a-z, A-Z, 0-9, and space characters\n"));
+  Serial.println(F("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"));
   //Send the first prompt to enter text
   prompt4Message();
 }
@@ -118,8 +105,7 @@ void loop() {
   //If message processing failed then go to program stage 4 to reset, otherwise proceed to stage 2 for encoding
   if (progStage == 1 && msgProcessingComplete){
     if(msgProcessingFailed){
-      Serial.println();
-      Serial.println("  --->!!! Transmission Aborted !!!!<---");
+      Serial.println(F("\n  --->!!! Transmission Aborted !!!!<---"));
       progStage = 4;
     }
     else {
@@ -130,20 +116,14 @@ void loop() {
   //ENCODING
   //If processing is complete move on to encoding
   if(progStage == 2 && !morseEncodingComplete){
-    //Serial.print("Characters to encode: ");
-    //Serial.println(processedMessage.length());
-    Serial.print("  -Encoding ->          ");
-    //Iterate through the processedMessage String and pass each character to the morseEncoder
-    for(int i=0; i < processedMessage.length(); i++){
-      //Serial.print(processedMessage[i]);
-      //Serial.println(" - Sent to Morse Encoder");
-      morseBinaryString += morseEncoder(processedMessage[i]);
-      Serial.print("#");
+    Serial.print(F("  -Encoding ->          "));
+    //Iterate through the txtCollection String and pass each character to the morseEncoder
+    for(int i=0; i < txtCollection.length(); i++){
+      Serial.print(F("#"));
+      morseBinaryString += morseEncoder(txtCollection[i]);
     }
-     //Sending a newline
-     Serial.println();
-    
-    Serial.print("  -Encoded Morse as Binary:  ");
+
+    Serial.print(F("\n  -Encoded Morse as Binary:  "));
     Serial.println(morseBinaryString);
  
     //Set the the more encoding to true so the program knows to move on
@@ -158,15 +138,13 @@ void loop() {
   //TRANSMISSION
   //Once Encoding is complete move to transmission
   if(progStage == 3 && !transmissionComplete){
-    Serial.print("  -Transmitting:             ");
+    Serial.print(F("  -Transmitting:             "));
     //loop through the morse
     for(int i=0; i < morseBinaryString.length(); i++){
       morseTransmission(morseBinaryString[i]);
     }
-    //Print a newline
-    Serial.println();
     //Notify the user that transmission is complete
-    Serial.println("  -Transmission Complete");
+    Serial.println(F("\n  -Transmission Complete"));
         
     //Once the morse has been transmitted set transmissionComplete to true so the program knows to move on
     transmissionComplete = true;
@@ -183,9 +161,7 @@ void loop() {
     //Reset the variables
     resetProg();
     //Print a line of symbols to make it evident that the program is waiting for new input
-    Serial.println();
-    Serial.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-    Serial.println();
+    Serial.println(F("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"));
     //Prompt the user to enter additional text
     prompt4Message();
     //Change program state to 0 to accept serial input
@@ -201,7 +177,7 @@ void loop() {
  //Function to prompt the user for input
  //Call function to reset variables
  void prompt4Message(){
-  Serial.println("Please Enter Message to be Transcoded to Morse Code");
+  Serial.println(F("Please Enter Message to be Transcoded to Morse Code"));
  }
 
  //----------------------------------------------------------------------------------------
@@ -235,13 +211,15 @@ void loop() {
   //Create a bool to identify if input was invalid
   bool invalidInput = false;
   //Print what was input by the user
-  Serial.print("  -Original User Input: ");
+  Serial.print(F("  -Original User Input: "));
   Serial.println(txtCollection);
+
+  //Remove any leading or trailing whitespace
+  txtCollection.trim();
 
   //Ensure the text input is less than 60 characters
   if(txtCollection.length() > maxCharacters){
-    Serial.println("  -WARNING - Message Maxiumum Exceeded!");
-    Serial.println("  -Please enter less than 60 Characters");
+    Serial.println(F("  -WARNING - Message Maxiumum Exceeded! - Please enter less than 60 Characters"));
     //set invalid input to true if message is too long
     invalidInput = true;
   }
@@ -251,7 +229,7 @@ void loop() {
   for(int i=0; i < txtCollection.length(); i++){
     //Check to see if any of the characters are not alphanumeric or a space
     if(!isAlphaNumeric(txtCollection[i]) && !isSpace(txtCollection[i])){
-      Serial.print("  -WARNING - Message Contains Invalid Characters - Message should only contain a-z, A-Z, 0-9, and space characters. --> Given: ");
+      Serial.print(F("  -WARNING - Message Contains Invalid Characters - Message should only contain a-z, A-Z, 0-9, and space characters. --> Given: "));
       Serial.println(txtCollection[i]);
       //set msgProcessingFailed to true this will be used in void loop to reset the program
       //msgProcessingFailed = true;
@@ -263,10 +241,9 @@ void loop() {
     //Assign the approved message so the message isn't overwritten during confirmation
     txtCollection.toUpperCase();
   
-    //Assign the approved message so the message isn't overwritten during confirmation
-    processedMessage = txtCollection;
-    Serial.print("  -Processed Message:   ");
-    Serial.println(processedMessage);
+    //print the processed message
+    Serial.print(F("  -Processed Message:   "));
+    Serial.println(txtCollection);
   }
   //Set the processing as complete so the program knows to move on
   msgProcessingComplete = true;
@@ -279,11 +256,7 @@ void loop() {
  //----------------------------------------------------------------------------------------
  //Function to reset variables
  //Reset all text variables to ensure that old and new messages are not combined
- //Unblock user from entering text
  void resetProg(){
-  //Reset the program to the beginning
-  //Reset the progStage
-  progStage = 0;
   //Set all stage statuses to false
   txtCollectionComplete = false;
   msgProcessingComplete = false;
@@ -294,9 +267,11 @@ void loop() {
   msgProcessingFailed = false;
 
   //Reset text accumulators
-  txtCollection = "";
-  processedMessage = "";
-  morseBinaryString = "";
+  txtCollection.remove(0);
+  morseBinaryString.remove(0);
+
+  //Reset the progStage
+  progStage = 0;
  }
 
 
@@ -499,7 +474,7 @@ void loop() {
       return mcSpace;
       break;
     default:
-      Serial.println("Something has gone very wrong! Encoder received invalid character!");
+      Serial.println(F("Something has gone very wrong! Encoder received invalid character!"));
       break;
   }
   
@@ -521,7 +496,7 @@ void loop() {
       tone(codeOutPin, msTone);
     }
     else{
-      Serial.println("Something has gone horribly wrong! A non-binary character has reached the encoder");
+      Serial.println(F("Something has gone horribly wrong! A non-binary character has reached the encoder"));
     }
 
     //Delay while the time that the morse binary character should be on or off
