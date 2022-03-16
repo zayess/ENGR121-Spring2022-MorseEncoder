@@ -2,9 +2,9 @@
 //Int to control the flow of the program
 //0 = User Input
 //1 = Processing
-//2 = Encoding
-//3 = Transmitting
-//4 = Reset
+//2 = Encoding/Transmitting
+//3 = Reset
+
 int progStage = 0;
 
 //Serial Text Collection Variables
@@ -58,9 +58,6 @@ void setup() {
   //Set pinMode for codeOutPin
   pinMode(codeOutPin, OUTPUT);
   digitalWrite(codeOutPin, LOW);
-
-  //Reserve space for the txtCollection variable
-  //txtCollection.reserve(2);
   
   //Introduce the program
   Serial.println(F("\n-----------------------------------------"));
@@ -102,29 +99,35 @@ void loop() {
   }
 
   //if still in program stage 1 and processing has been completed check to see if msgProcessing failed
-  //If message processing failed then go to program stage 4 to reset, otherwise proceed to stage 2 for encoding
+  //If message processing failed then go to program stage 3 to reset, otherwise proceed to stage 2 for encoding
   if (progStage == 1 && msgProcessingComplete){
     if(msgProcessingFailed){
       Serial.println(F("\n  --->!!! Transmission Aborted !!!!<---"));
-      progStage = 4;
+      progStage = 3;
     }
     else {
+      //Proceed with Encoding and transmitting
       progStage = 2;
     }
   }
 
-  //ENCODING
-  //If processing is complete move on to encoding
+  //ENCODING/TRANSMITTING
+  //If processing is complete move on to encoding/transmitting
   if(progStage == 2 && !morseEncodingComplete){
-    Serial.print(F("  -Encoding ->          "));
     //Iterate through the txtCollection String and pass each character to the morseEncoder
     for(int i=0; i < txtCollection.length(); i++){
-      Serial.print(F("#"));
-      morseBinaryString += morseEncoder(txtCollection[i]);
+      Serial.print(F("  -Encoding: "));
+      Serial.print(txtCollection[i]);
+      Serial.print(F(" -> Transmitting: "));
+      morseBinaryString = morseEncoder(txtCollection[i]);
+      
+      //Pass each character of the morse binary string to the morse transmitter
+      for (int s=0; s < morseBinaryString.length(); s++){
+        morseTransmission(morseBinaryString[s]);
+      }
+      //Print a new line after each letter is encoded and transmitted
+      Serial.println();
     }
-
-    Serial.print(F("\n  -Encoded Morse as Binary:  "));
-    Serial.println(morseBinaryString);
  
     //Set the the more encoding to true so the program knows to move on
     morseEncodingComplete = true;
@@ -135,29 +138,9 @@ void loop() {
         progStage = 3;
   }
 
-  //TRANSMISSION
-  //Once Encoding is complete move to transmission
-  if(progStage == 3 && !transmissionComplete){
-    Serial.print(F("  -Transmitting:             "));
-    //loop through the morse
-    for(int i=0; i < morseBinaryString.length(); i++){
-      morseTransmission(morseBinaryString[i]);
-    }
-    //Notify the user that transmission is complete
-    Serial.println(F("\n  -Transmission Complete"));
-        
-    //Once the morse has been transmitted set transmissionComplete to true so the program knows to move on
-    transmissionComplete = true;
-  }
-
-  //if still in stage 4 and transmission is complete then set the program stage to 4 to reset
-  if(progStage == 3 && transmissionComplete){
-        progStage = 4;
-  }
-
   //RESET
   //Once the program has finished reset all the variables and prompt the user to enter text again
-  if(progStage == 4){
+  if(progStage == 3){
     //Reset the variables
     resetProg();
     //Print a line of symbols to make it evident that the program is waiting for new input
@@ -175,7 +158,6 @@ void loop() {
  */
 
  //Function to prompt the user for input
- //Call function to reset variables
  void prompt4Message(){
   Serial.println(F("Please Enter Message to be Transcoded to Morse Code"));
  }
@@ -238,7 +220,6 @@ void loop() {
   }
   if(!invalidInput){
     //If valid, change all characters to uppercase
-    //Assign the approved message so the message isn't overwritten during confirmation
     txtCollection.toUpperCase();
   
     //print the processed message
@@ -359,6 +340,7 @@ void loop() {
  String mc0 = "111000111000111000111000111000";
  // Character - Space Morse - M.Gap Binary - 0000          
  String mcSpace = "0000";
+ 
 
 //Depending on which character is passed add the binary value to the morseBinaryString
   switch (x){
@@ -489,9 +471,11 @@ void loop() {
     //print the character being processed
     Serial.print(x);
     //Determine if tone is supposed to be off or on
+    //If 0 then set the codeOutPin to noTone
     if(x == '0'){
       noTone(codeOutPin);    
     }
+    //If 1 then turn on the tone
     else if(x == '1'){
       tone(codeOutPin, msTone);
     }
@@ -499,7 +483,7 @@ void loop() {
       Serial.println(F("Something has gone horribly wrong! A non-binary character has reached the encoder"));
     }
 
-    //Delay while the time that the morse binary character should be on or off
+    //Delay for the time that the morse binary character should be on or off
     delay(morseBinaryDelay);
 
   }
